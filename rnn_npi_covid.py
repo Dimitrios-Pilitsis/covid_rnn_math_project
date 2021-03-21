@@ -1,0 +1,188 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import tensorflow as tf
+#from tensorflow import keras
+
+
+df = pd.read_csv('Data/time_series_covid19_confirmed_global.csv', index_col='Country/Region').transpose()
+#df = pd.read_csv('Data/time_series_covid19_confirmed_greece.csv').transpose()
+
+print(df.head())
+
+plt.scatter(df['Country/Region'], df['Greece'])
+plt.show()
+
+
+#for column in df:
+#    print(df[column])
+#print(df.describe().transpose())
+
+
+#------------------------------------------------------------------------
+#Key variables
+
+#Series is all the data we have 
+#time = np.arange(4 * 365 + 1, dtype="float32")
+
+split_time = 1000
+time_train = time[:split_time]
+x_train = series[:split_time]
+time_valid = time[split_time:]
+x_valid = series[split_time:]
+
+window_size = 20
+batch_size = 32
+shuffle_buffer_size = 1000
+
+#------------------------------------------------------------------------
+
+def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
+  dataset = tf.data.Dataset.from_tensor_slices(series)
+  dataset = dataset.window(window_size + 1, shift=1, drop_remainder=True)
+  dataset = dataset.flat_map(lambda window: window.batch(window_size + 1))
+  dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-1], window[-1]))
+  dataset = dataset.batch(batch_size).prefetch(1)
+  return dataset
+
+tf.keras.backend.clear_session()
+
+
+dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
+
+
+
+
+model = tf.keras.models.Sequential([
+  tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
+                      input_shape=[None]),
+    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
+  tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+  tf.keras.layers.Dense(1),
+  tf.keras.layers.Lambda(lambda x: x * 100.0)
+])
+
+
+
+#-----------------------------------------------------------------------
+#Learning rate Scheduker
+lr_schedule = tf.keras.callbacks.LearningRateScheduler(
+    lambda epoch: 1e-8 * 10**(epoch / 20))
+optimizer = tf.keras.optimizers.SGD(lr=1e-8, momentum=0.9)
+model.compile(loss=tf.keras.losses.Huber(),
+              optimizer=optimizer,
+              metrics=["mae"])
+history = model.fit(dataset, epochs=100, callbacks=[lr_schedule])
+
+plt.semilogx(history.history["lr"], history.history["loss"])
+plt.axis([1e-8, 1e-4, 0, 30])
+
+
+learning_rate_optimal = 1e-3
+
+#----------------------------------------------------------------------
+
+
+
+tf.keras.backend.clear_session() #must clear session as we defined variables for LR Scheduler
+
+
+
+#---------------------------------------------------------------------------------
+#NN with optimal Learning Rate
+dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
+
+model = tf.keras.models.Sequential([
+  tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
+                      input_shape=[None]),
+   tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
+  tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+  tf.keras.layers.Dense(1),
+  tf.keras.layers.Lambda(lambda x: x * 100.0)
+])
+
+
+model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
+
+#Huber loss function version
+model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
+
+
+history = model.fit(dataset, epochs=100)
+
+#-----------------------------------------------------------------------------------------
+#Predicting/forecasting
+
+"""
+#Alternative to the below
+forecast = []
+results = []
+for time in range(len(series) - window_size):
+  forecast.append(model.predict(series[time:time + window_size][np.newaxis]))
+
+forecast = forecast[split_time-window_size:]
+results = np.array(forecast)[:, 0, 0]
+"""
+
+def model_forecast(model, series, window_size):
+    ds = tf.data.Dataset.from_tensor_slices(series)
+    ds = ds.window(window_size, shift=1, drop_remainder=True)
+    ds = ds.flat_map(lambda w: w.batch(window_size))
+    ds = ds.batch(32).prefetch(1)
+    forecast = model.predict(ds)
+    return forecast
+
+rnn_forecast = model_forecast(model, series[..., np.newaxis], window_size)
+rnn_forecast = rnn_forecast[split_time - window_size:-1, -1, 0]
+
+
+
+plt.figure(figsize=(10, 6))
+
+plot_series(time_valid, x_valid)
+plot_series(time_valid, results)
+
+tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
+
+
+#-----------------------------------------------------------
+# Retrieve a list of list results on training and test data
+# sets for each training epoch
+#-----------------------------------------------------------
+mae=history.history['mae']
+loss=history.history['loss']
+
+epochs=range(len(loss)) # Get number of epochs
+
+#------------------------------------------------
+# Plot MAE and Loss
+#------------------------------------------------
+plt.plot(epochs, mae, 'r')
+plt.plot(epochs, loss, 'b')
+plt.title('MAE and Loss')
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend(["MAE", "Loss"])
+
+plt.figure()
+
+
+#------------------------------------------------
+# Plot Zoomed MAE and Loss
+#------------------------------------------------
+
+epochs_zoom = epochs[200:]
+mae_zoom = mae[200:]
+loss_zoom = loss[200:]
+
+
+plt.plot(epochs_zoom, mae_zoom, 'r')
+plt.plot(epochs_zoom, loss_zoom, 'b')
+plt.title('MAE and Loss')
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.legend(["MAE", "Loss"])
+
+plt.figure()
+
+
