@@ -1,24 +1,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import tensorflow as tf
+#import tensorflow as tf
 #from tensorflow import keras
 
-
-df = pd.read_csv('Data/time_series_covid19_confirmed_global.csv', index_col='Country/Region').transpose()
+df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
+#df = pd.read_csv('Data/time_series_covid19_confirmed_global.csv', index_col='Country/Region')
 #df = pd.read_csv('Data/time_series_covid19_confirmed_greece.csv').transpose()
 
 print(df.head())
 
-plt.scatter(df['Country/Region'], df['Greece'])
-plt.show()
+
+#Obtain specific row
+#df_greece = df.loc[df.index == 'Greece']
+
+#print(df_greece)
+
 
 
 #for column in df:
 #    print(df[column])
 #print(df.describe().transpose())
 
-
+"""
 #------------------------------------------------------------------------
 #Key variables
 
@@ -30,6 +34,11 @@ time_train = time[:split_time]
 x_train = series[:split_time]
 time_valid = time[split_time:]
 x_valid = series[split_time:]
+
+
+#Alternative to keep the code clean if it gets too large
+#(training_images, training_labels), (test_images, test_labels) = mnist.load_data()
+
 
 window_size = 20
 batch_size = 32
@@ -112,7 +121,7 @@ history = model.fit(dataset, epochs=100)
 
 #-----------------------------------------------------------------------------------------
 #Predicting/forecasting
-
+"""
 """
 #Alternative to the below
 forecast = []
@@ -123,7 +132,7 @@ for time in range(len(series) - window_size):
 forecast = forecast[split_time-window_size:]
 results = np.array(forecast)[:, 0, 0]
 """
-
+"""
 def model_forecast(model, series, window_size):
     ds = tf.data.Dataset.from_tensor_slices(series)
     ds = ds.window(window_size, shift=1, drop_remainder=True)
@@ -185,4 +194,4 @@ plt.legend(["MAE", "Loss"])
 
 plt.figure()
 
-
+"""
