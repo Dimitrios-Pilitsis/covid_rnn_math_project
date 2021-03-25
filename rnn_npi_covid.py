@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 #import tensorflow as tf
 #from tensorflow import keras
+from math import isnan
 
 df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 
@@ -16,20 +17,23 @@ def setup_ts(dataframe, country_name):
 	ts_country = ts_country.drop(columns=['CountryName', 'CountryCode'])
 	return ts_country
 
+#Finds the first non-zero confirmed case
+def first_nonzero_case(timeseries):
+	confirmed_cases = ts_greece['ConfirmedCases'].to_numpy()
+	fnz = 0 
+	for i in confirmed_cases:
+		if isnan(i) == False and i != 0:
+			break
+		fnz += 1	
+	return fnz
+
+
+
 ts_greece = setup_ts(df, 'Greece')
-
-#df_greece['Date'] = pd.to_datetime(df_greece['Date'], format='%Y%m%d')
-
 
 
 print(ts_greece)
-#Could remove the CountryName and CountryCode
-
-#Obtain specific row
-#df_greece = df.loc[df.index == 'Greece']
-
-#print(df_greece)
-
+fnz = first_nonzero_case(ts_greece)
 
 
 #for column in df:
