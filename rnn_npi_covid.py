@@ -5,7 +5,6 @@ import pandas as pd
 #from tensorflow import keras
 from math import isnan
 
-df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 
 
 #Creates the timeseries so that it can be handled by TF
@@ -29,11 +28,21 @@ def first_nonzero_case(timeseries):
 
 
 
+
+
+
+
+df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
+
+#Convert the csv into an appropriate timeseries
 ts_greece = setup_ts(df, 'Greece')
 
+#Update timeseries so that the first value is the first confirmed case
+fnz = first_nonzero_case(ts_greece)
+ts_greece = ts_greece[fnz:]
 
 print(ts_greece)
-fnz = first_nonzero_case(ts_greece)
+
 
 
 #for column in df:
