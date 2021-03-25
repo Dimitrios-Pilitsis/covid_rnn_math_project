@@ -17,7 +17,7 @@ def setup_ts(dataframe, country_name):
 	return ts_country
 
 #Finds the first non-zero confirmed case
-def first_nonzero_case(timeseries):
+def first_nonzero_case_index(timeseries):
 	confirmed_cases = ts_greece['ConfirmedCases'].to_numpy()
 	fnz = 0 
 	for i in confirmed_cases:
@@ -29,25 +29,24 @@ def first_nonzero_case(timeseries):
 
 
 
-
-
-
 df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 
 #Convert the csv into an appropriate timeseries
 ts_greece = setup_ts(df, 'Greece')
 
 #Update timeseries so that the first value is the first confirmed case
-fnz = first_nonzero_case(ts_greece)
+fnz = first_nonzero_case_index(ts_greece)
 ts_greece = ts_greece[fnz:]
-
 print(ts_greece)
 
+#2D numpy array (doesn't include date column within the array)
+dataset = ts_greece.to_numpy()[:-1,:] #Remove last row as it is just filled with NaN
+print(dataset)
 
 
-#for column in df:
-#    print(df[column])
-#print(df.describe().transpose())
+
+
+
 
 """
 #------------------------------------------------------------------------
