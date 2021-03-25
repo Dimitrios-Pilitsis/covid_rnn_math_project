@@ -44,18 +44,17 @@ dataset = ts_greece.to_numpy()[:-1,:] #Remove last row as it is just filled with
 print(dataset)
 
 
-
-
+time = np.arange(len(dataset)+1, dtype="float32") #Time is represented as day x since first covid case
+cases = dataset[:,-2]
+deaths = dataset[:,-1]
 
 
 """
 #------------------------------------------------------------------------
 #Key variables
 
-#Series is all the data we have 
-#time = np.arange(4 * 365 + 1, dtype="float32")
-
-split_time = 1000
+#Current number of days is 390
+split_time = 273 #70:30 split
 time_train = time[:split_time]
 x_train = series[:split_time]
 time_valid = time[split_time:]
