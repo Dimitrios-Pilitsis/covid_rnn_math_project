@@ -5,11 +5,25 @@ import pandas as pd
 #from tensorflow import keras
 
 df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
-#df = pd.read_csv('Data/time_series_covid19_confirmed_global.csv', index_col='Country/Region')
-#df = pd.read_csv('Data/time_series_covid19_confirmed_greece.csv').transpose()
 
-print(df.head())
 
+#Creates the timeseries so that it can be handled by TF
+def setup_ts(dataframe, country_name):
+	df_country = df.loc[df['CountryName'] == country_name]
+	df_country.loc[:,'Date'] = pd.to_datetime(df_country.loc[:, 'Date'], format='%Y%m%d')
+	#df_greece['Date'] = pd.to_datetime(df_greece['Date'], format='%Y%m%d')
+	ts_country = df_country.set_index('Date')
+	ts_country = ts_country.drop(columns=['CountryName', 'CountryCode'])
+	return ts_country
+
+ts_greece = setup_ts(df, 'Greece')
+
+#df_greece['Date'] = pd.to_datetime(df_greece['Date'], format='%Y%m%d')
+
+
+
+print(ts_greece)
+#Could remove the CountryName and CountryCode
 
 #Obtain specific row
 #df_greece = df.loc[df.index == 'Greece']
