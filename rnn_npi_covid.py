@@ -38,14 +38,14 @@ df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 #Convert the csv into an appropriate timeseries
 ts_greece = setup_ts(df, 'Greece')
 
+
 #Update timeseries so that the first value is the first confirmed case
 fnz = first_nonzero_case_index(ts_greece)
-ts_greece = ts_greece[fnz:]
-#print(ts_greece)
+ts_greece = ts_greece[fnz:-1] #Remove last row as it is just filled with NaN
 
 
 #2D numpy array (doesn't include date column within the array)
-dataset = ts_greece.to_numpy()[:-1,:] #Remove last row as it is just filled with NaN
+dataset = ts_greece.to_numpy() #Remove last row as it is just filled with NaN
 #print(dataset)
 
 #Rescale the ConfirmedCases & ConfirmedDeaths which are the only features on the real number range
@@ -110,26 +110,24 @@ def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
 dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 
 #print(dataset)
-"""
 for x, y in dataset:
    print(x, y)
-"""
-"""
+
 model = tf.keras.models.Sequential([
 	 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
                       input_shape=[None]),
-    	 tf.keras.layers.LSTM(32, return_sequences=True),
-  	 #tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+    	 tf.keras.layers.LSTM(64, return_sequences=True),
+#    	 tf.keras.layers.LSTM(64, return_sequences=True),
   	 tf.keras.layers.Dense(output_size),
 	#  tf.keras.layers.Lambda(lambda x: x * 100.0)
 ])
 
 
 model.summary()
-"""
-"""
+
 #-----------------------------------------------------------------------
 #Learning rate Scheduker
+"""
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(
     lambda epoch: 1e-8 * 10**(epoch / 20))
 optimizer = tf.keras.optimizers.SGD(lr=1e-8, momentum=0.9)
@@ -141,7 +139,7 @@ history = model.fit(dataset, epochs=100, callbacks=[lr_schedule])
 plt.semilogx(history.history["lr"], history.history["loss"])
 #plt.axis([2e-8, 1e-4, 0, 30])
 plt.show()
-
+"""
 learning_rate_optimal = 1e-3
 
 #----------------------------------------------------------------------
@@ -159,14 +157,13 @@ model = tf.keras.models.Sequential([
 	 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
                       input_shape=[None]),
     	 tf.keras.layers.LSTM(32, return_sequences=True),
-  	 #tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+#    	 tf.keras.layers.LSTM(64, return_sequences=True),
   	 tf.keras.layers.Dense(output_size),
-	#  tf.keras.layers.Lambda(lambda x: x * 100.0)
 ])
-"""
-"""
+
+
 learning_rate_optimal = 1e-3
-model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
+#model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
 #Huber loss function version
 model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
@@ -174,7 +171,7 @@ model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr
 
 history = model.fit(dataset, epochs=100)
 
-"""
+
 #-----------------------------------------------------------------------------------------
 #Predicting/forecasting
 
@@ -188,7 +185,8 @@ for time in range(len(cases) - window_size):
 forecast = forecast[split_time-window_size:]
 results = np.array(forecast)[:, 0, 0]
 print(results)
-
+"""
+"""
 def model_forecast(model, series, window_size):
     ds = tf.data.Dataset.from_tensor_slices(series)
     ds = ds.window(window_size, shift=1, drop_remainder=True)
@@ -196,9 +194,7 @@ def model_forecast(model, series, window_size):
     ds = ds.batch(32).prefetch(1)
     forecast = model.predict(ds)
     return forecast
-"""
 
-"""
 rnn_forecast = model_forecast(model, cases[..., np.newaxis], window_size)
 rnn_forecast = rnn_forecast[split_time - window_size:-1, -1, 0]
 
@@ -211,7 +207,8 @@ plot_series(time_valid, results)
 
 tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
 
-
+"""
+"""
 #-----------------------------------------------------------
 # Retrieve a list of list results on training and test data
 # sets for each training epoch
@@ -233,14 +230,13 @@ plt.legend(["MAE", "Loss"])
 
 plt.figure()
 
-
 #------------------------------------------------
 # Plot Zoomed MAE and Loss
 #------------------------------------------------
-
-epochs_zoom = epochs[200:]
-mae_zoom = mae[200:]
-loss_zoom = loss[200:]
+zoom = 50
+epochs_zoom = epochs[zoom:]
+mae_zoom = mae[zoom:]
+loss_zoom = loss[zoom:]
 
 
 plt.plot(epochs_zoom, mae_zoom, 'r')
@@ -251,5 +247,6 @@ plt.ylabel("Accuracy")
 plt.legend(["MAE", "Loss"])
 
 plt.figure()
-
+plt.show()
 """
+
