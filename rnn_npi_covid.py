@@ -1,11 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-#import tensorflow as tf
+import tensorflow as tf
 #from tensorflow import keras
 from math import isnan
+from sklearn.preprocessing import MinMaxScaler
 
 
+
+#--------------------------------------------------------------
+#Data wrangling
 
 #Creates the timeseries so that it can be handled by TF
 def setup_ts(dataframe, country_name):
@@ -37,11 +41,17 @@ ts_greece = setup_ts(df, 'Greece')
 #Update timeseries so that the first value is the first confirmed case
 fnz = first_nonzero_case_index(ts_greece)
 ts_greece = ts_greece[fnz:]
-print(ts_greece)
+#print(ts_greece)
+
 
 #2D numpy array (doesn't include date column within the array)
 dataset = ts_greece.to_numpy()[:-1,:] #Remove last row as it is just filled with NaN
-print(dataset)
+#print(dataset)
+
+#Rescale the ConfirmedCases & ConfirmedDeaths which are the only features on the real number range
+scaler = MinMaxScaler()
+dataset[:,-2:] = scaler.fit_transform(dataset[:,-2:])
+#Timeseries is useful for any initial visualizations, dataset is for the TF model
 
 
 time = np.arange(len(dataset)+1, dtype="float32") #Time is represented as day x since first covid case
@@ -49,28 +59,35 @@ cases = dataset[:,-2]
 deaths = dataset[:,-1]
 
 
-"""
 #------------------------------------------------------------------------
 #Key variables
 
 #Current number of days is 390
 split_time = 273 #70:30 split
 time_train = time[:split_time]
-x_train = series[:split_time]
+x_train = cases[:split_time]
 time_valid = time[split_time:]
-x_valid = series[split_time:]
-
+x_valid = cases[split_time:]
 
 #Alternative to keep the code clean if it gets too large
 #(training_images, training_labels), (test_images, test_labels) = mnist.load_data()
 
 
-window_size = 20
-batch_size = 32
-shuffle_buffer_size = 1000
+window_size = 5
+batch_size = 20
+shuffle_buffer_size = 100
+output_size = 1 
+
+#Shape of input is [batch, time, features]
+#Shape after going through first layer becomes [batch, time, lstm_units]
+
+#Makes windowed dataset into the form [batch size, output size, features]
+num_of_days_to_predict = 1
+
 
 #------------------------------------------------------------------------
-
+"""
+#Original windowed dataset with num_of_days_to_predict=1
 def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
   dataset = tf.data.Dataset.from_tensor_slices(series)
   dataset = dataset.window(window_size + 1, shift=1, drop_remainder=True)
@@ -78,26 +95,39 @@ def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
   dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-1], window[-1]))
   dataset = dataset.batch(batch_size).prefetch(1)
   return dataset
+"""
 
-tf.keras.backend.clear_session()
+def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
+  dataset = tf.data.Dataset.from_tensor_slices(series)
+  dataset = dataset.window(window_size + num_of_days_to_predict, shift=1, drop_remainder=True)
+  dataset = dataset.flat_map(lambda window: window.batch(window_size + num_of_days_to_predict))
+  dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-num_of_days_to_predict], window[-num_of_days_to_predict:]))
+  dataset = dataset.batch(batch_size).prefetch(1)
+  return dataset
+
 
 
 dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 
-
-
-
+#print(dataset)
+"""
+for x, y in dataset:
+   print(x, y)
+"""
+"""
 model = tf.keras.models.Sequential([
-  tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
+	 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
                       input_shape=[None]),
-    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
-  tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
-  tf.keras.layers.Dense(1),
-  tf.keras.layers.Lambda(lambda x: x * 100.0)
+    	 tf.keras.layers.LSTM(32, return_sequences=True),
+  	 #tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+  	 tf.keras.layers.Dense(output_size),
+	#  tf.keras.layers.Lambda(lambda x: x * 100.0)
 ])
 
 
-
+model.summary()
+"""
+"""
 #-----------------------------------------------------------------------
 #Learning rate Scheduker
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(
@@ -109,13 +139,12 @@ model.compile(loss=tf.keras.losses.Huber(),
 history = model.fit(dataset, epochs=100, callbacks=[lr_schedule])
 
 plt.semilogx(history.history["lr"], history.history["loss"])
-plt.axis([1e-8, 1e-4, 0, 30])
-
+#plt.axis([2e-8, 1e-4, 0, 30])
+plt.show()
 
 learning_rate_optimal = 1e-3
 
 #----------------------------------------------------------------------
-
 
 
 tf.keras.backend.clear_session() #must clear session as we defined variables for LR Scheduler
@@ -127,15 +156,16 @@ tf.keras.backend.clear_session() #must clear session as we defined variables for
 dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 
 model = tf.keras.models.Sequential([
-  tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
+	 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
                       input_shape=[None]),
-   tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
-  tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
-  tf.keras.layers.Dense(1),
-  tf.keras.layers.Lambda(lambda x: x * 100.0)
+    	 tf.keras.layers.LSTM(32, return_sequences=True),
+  	 #tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+  	 tf.keras.layers.Dense(output_size),
+	#  tf.keras.layers.Lambda(lambda x: x * 100.0)
 ])
-
-
+"""
+"""
+learning_rate_optimal = 1e-3
 model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
 #Huber loss function version
@@ -144,20 +174,21 @@ model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr
 
 history = model.fit(dataset, epochs=100)
 
+"""
 #-----------------------------------------------------------------------------------------
 #Predicting/forecasting
-"""
-"""
+
 #Alternative to the below
+"""
 forecast = []
 results = []
-for time in range(len(series) - window_size):
-  forecast.append(model.predict(series[time:time + window_size][np.newaxis]))
+for time in range(len(cases) - window_size):
+  forecast.append(model.predict(cases[time:time + window_size][np.newaxis]))
 
 forecast = forecast[split_time-window_size:]
 results = np.array(forecast)[:, 0, 0]
-"""
-"""
+print(results)
+
 def model_forecast(model, series, window_size):
     ds = tf.data.Dataset.from_tensor_slices(series)
     ds = ds.window(window_size, shift=1, drop_remainder=True)
@@ -165,8 +196,10 @@ def model_forecast(model, series, window_size):
     ds = ds.batch(32).prefetch(1)
     forecast = model.predict(ds)
     return forecast
+"""
 
-rnn_forecast = model_forecast(model, series[..., np.newaxis], window_size)
+"""
+rnn_forecast = model_forecast(model, cases[..., np.newaxis], window_size)
 rnn_forecast = rnn_forecast[split_time - window_size:-1, -1, 0]
 
 
