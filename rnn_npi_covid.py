@@ -49,16 +49,29 @@ dataset = ts_greece.to_numpy() #Remove last row as it is just filled with NaN
 #print(dataset)
 
 #Rescale the ConfirmedCases & ConfirmedDeaths which are the only features on the real number range
+#Create 2 different scalers as it makes it easier for later when plotting different graphs
+cases_scaler = MinMaxScaler()
+deaths_scaler = MinMaxScaler()
+
+#Inner reshape is to satisfy sklearn, outer reshape is to keep the shape of array the same as originally
+dataset[:,-2] = cases_scaler.fit_transform(dataset[:,-2].reshape(-1,1))[:,0]
+dataset[:,-1] = deaths_scaler.fit_transform(dataset[:,-1].reshape(-1,1))[:,0]
+
+"""
+#Might be useful for when I bring in multidimensional data (as I will need to rescale both cases and deaths)
+
+#Original scaler which incoporated both cases and deaths (harder for visualizations)
 scaler = MinMaxScaler()
 dataset[:,-2:] = scaler.fit_transform(dataset[:,-2:])
+"""
 #Timeseries is useful for any initial visualizations, dataset is for the TF model
 
 
-time = np.arange(len(dataset)+1, dtype="float32") #Time is represented as day x since first covid case
+time = np.arange(len(dataset), dtype="float32") #Time is represented as day x since first covid case
 cases = dataset[:,-2]
 deaths = dataset[:,-1]
 
-
+print(cases)
 #------------------------------------------------------------------------
 #Key variables
 
@@ -69,8 +82,6 @@ x_train = cases[:split_time]
 time_valid = time[split_time:]
 x_valid = cases[split_time:]
 
-#Alternative to keep the code clean if it gets too large
-#(training_images, training_labels), (test_images, test_labels) = mnist.load_data()
 
 
 window_size = 5
@@ -107,6 +118,7 @@ def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
 
 
 
+"""
 dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 
 #print(dataset)
@@ -123,11 +135,9 @@ model = tf.keras.models.Sequential([
 ])
 
 
-model.summary()
 
 #-----------------------------------------------------------------------
 #Learning rate Scheduker
-"""
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(
     lambda epoch: 1e-8 * 10**(epoch / 20))
 optimizer = tf.keras.optimizers.SGD(lr=1e-8, momentum=0.9)
@@ -158,25 +168,25 @@ model = tf.keras.models.Sequential([
                       input_shape=[None]),
     	 tf.keras.layers.LSTM(32, return_sequences=True),
 #    	 tf.keras.layers.LSTM(64, return_sequences=True),
+#    	 tf.keras.layers.LSTM(32),
   	 tf.keras.layers.Dense(output_size),
 ])
 
 
-learning_rate_optimal = 1e-3
+model.summary()
+
 #model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
 #Huber loss function version
 model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
 
-history = model.fit(dataset, epochs=100)
-
+history = model.fit(dataset, epochs=50)
 
 #-----------------------------------------------------------------------------------------
 #Predicting/forecasting
 
 #Alternative to the below
-"""
 forecast = []
 results = []
 for time in range(len(cases) - window_size):
@@ -184,8 +194,6 @@ for time in range(len(cases) - window_size):
 
 forecast = forecast[split_time-window_size:]
 results = np.array(forecast)[:, 0, 0]
-print(results)
-"""
 """
 def model_forecast(model, series, window_size):
     ds = tf.data.Dataset.from_tensor_slices(series)
@@ -197,17 +205,36 @@ def model_forecast(model, series, window_size):
 
 rnn_forecast = model_forecast(model, cases[..., np.newaxis], window_size)
 rnn_forecast = rnn_forecast[split_time - window_size:-1, -1, 0]
-
-
-
-plt.figure(figsize=(10, 6))
-
-plot_series(time_valid, x_valid)
-plot_series(time_valid, results)
-
-tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
-
 """
+
+#For visualizations, we need to rescale the ConfirmedCases & ConfirmedDeaths
+x_valid_unscaled = cases_scaler.inverse_transform(x_valid.reshape(-1, 1))[:,0]
+results_unscaled = cases_scaler.inverse_transform(results.reshape(-1, 1))[:,0]
+
+print(x_valid_unscaled)
+print(results_unscaled)
+
+def plot_series(time, series, format="-", start=0, end=None):
+    plt.plot(time[start:end], series[start:end], format)
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.grid(True)
+
+
+#Plot x_valid and predicted results on same graph to see how similar they are
+plt.figure(figsize=(10, 6))
+plt.plot(time_valid, x_valid_unscaled, '-')
+plt.plot(time_valid, results_unscaled, '-')
+
+
+#plot_series(time_valid, x_valid)
+#plot_series(time_valid, results)
+#Need to add an legend so that it is easier to distinguish between plots
+plt.show()
+
+#Quantify the difference in predicted and actual values
+print(tf.keras.metrics.mean_absolute_error(x_valid, results).numpy())
+
 """
 #-----------------------------------------------------------
 # Retrieve a list of list results on training and test data
@@ -249,4 +276,3 @@ plt.legend(["MAE", "Loss"])
 plt.figure()
 plt.show()
 """
-
