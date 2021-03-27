@@ -71,12 +71,11 @@ time = np.arange(len(dataset), dtype="float32") #Time is represented as day x si
 cases = dataset[:,-2]
 deaths = dataset[:,-1]
 
-print(cases)
+#print(cases)
 #------------------------------------------------------------------------
 #Key variables
-
 #Current number of days is 390
-split_time = 273 #70:30 split
+split_time = int(0.7*len(dataset)) #70:30 split
 time_train = time[:split_time]
 x_train = cases[:split_time]
 time_valid = time[split_time:]
@@ -163,11 +162,13 @@ tf.keras.backend.clear_session() #must clear session as we defined variables for
 #NN with optimal Learning Rate
 dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 
+
 model = tf.keras.models.Sequential([
 	 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
                       input_shape=[None]),
     	 tf.keras.layers.LSTM(32, return_sequences=True),
-#    	 tf.keras.layers.LSTM(64, return_sequences=True),
+	 #tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+#    	 tf.keras.layers.LSTM(32, return_sequences=True),
 #    	 tf.keras.layers.LSTM(32),
   	 tf.keras.layers.Dense(output_size),
 ])
@@ -180,13 +181,14 @@ model.summary()
 #Huber loss function version
 model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
-
-history = model.fit(dataset, epochs=50)
+#Compie the model with the entire database (as x_valid will have more recent data which is useful for predictions)
+history = model.fit(dataset, epochs=1000)
 
 #-----------------------------------------------------------------------------------------
 #Predicting/forecasting
 
 #Alternative to the below
+"""
 forecast = []
 results = []
 for time in range(len(cases) - window_size):
@@ -203,37 +205,40 @@ def model_forecast(model, series, window_size):
     forecast = model.predict(ds)
     return forecast
 
-rnn_forecast = model_forecast(model, cases[..., np.newaxis], window_size)
-rnn_forecast = rnn_forecast[split_time - window_size:-1, -1, 0]
-"""
+forecast = model_forecast(model, cases[..., np.newaxis], window_size)
+results = forecast[split_time - window_size:-1, -1, 0]
 
-#For visualizations, we need to rescale the ConfirmedCases & ConfirmedDeaths
+
+#For visualizations, we need to unscale the ConfirmedCases & ConfirmedDeaths
 x_valid_unscaled = cases_scaler.inverse_transform(x_valid.reshape(-1, 1))[:,0]
 results_unscaled = cases_scaler.inverse_transform(results.reshape(-1, 1))[:,0]
 
+
+print("x_valid_unscaled: ")
 print(x_valid_unscaled)
+print("------------------------------")
+print("Predicted values: ")
+#Need to add an legend so that it is easier to distinguish between plots
 print(results_unscaled)
 
-def plot_series(time, series, format="-", start=0, end=None):
-    plt.plot(time[start:end], series[start:end], format)
-    plt.xlabel("Time")
-    plt.ylabel("Value")
-    plt.grid(True)
 
 
 #Plot x_valid and predicted results on same graph to see how similar they are
 plt.figure(figsize=(10, 6))
-plt.plot(time_valid, x_valid_unscaled, '-')
-plt.plot(time_valid, results_unscaled, '-')
-
-
-#plot_series(time_valid, x_valid)
-#plot_series(time_valid, results)
-#Need to add an legend so that it is easier to distinguish between plots
+plt.plot(time_valid, x_valid_unscaled, 'r-')
+plt.plot(time_valid, results_unscaled, 'b-')
+plt.title("Validation and Results for confirmed cases")
+plt.xlabel("Time")
+plt.ylabel("Confirmed Cases")
+plt.legend(["Validation", "Predicted"])
 plt.show()
 
+
 #Quantify the difference in predicted and actual values
-print(tf.keras.metrics.mean_absolute_error(x_valid, results).numpy())
+mae_valid = tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
+print("---------------------------------------------")
+
+print(mae_valid)
 
 """
 #-----------------------------------------------------------
