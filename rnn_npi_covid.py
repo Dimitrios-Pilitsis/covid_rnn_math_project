@@ -254,7 +254,7 @@ def main():
 	dataset_full_windowed = windowed_dataset(cases, window_size, batch_size, shuffle_buffer_size, num_of_days_to_predict)
 	history, model = run_model(dataset_full_windowed, output_size, learning_rate_optimal, epochs)
 
-	model_filename = 'weights/model_' + country_name + '.h5' 
+	model_filename = 'models_h5/' + country_name + '.h5' 
 	model.save(model_filename)
 
 

@@ -1,6 +1,11 @@
 import h5py
 import numpy as np
-filename = "weights/my_model.h5"
+import sys
+
+
+country_name = sys.argv[1] 
+filename = 'models_h5/' + country_name + '.h5'
+
 
 f = h5py.File(filename, 'r')
 #keys = f.keys()
@@ -12,28 +17,28 @@ f = h5py.File(filename, 'r')
 #Dense layer
 dense_bias = f['model_weights/dense/dense/bias:0']
 dense_bias_array = np.array(dense_bias)
-np.savetxt('weights/dense_bias.txt', dense_bias_array)
+np.savetxt('weights/' + country_name + '/dense_bias.txt', dense_bias_array)
 
 dense_kernel = f['model_weights/dense/dense/kernel:0']
 dense_kernel_array = np.array(dense_kernel)
-np.savetxt('weights/dense_kernel.txt', dense_kernel_array)
+np.savetxt('weights/' + country_name + '/dense_kernel.txt', dense_kernel_array)
 
 
 
 #Backward LSTM
 backward_lstm_cell_2_bias = f['model_weights/bidirectional/bidirectional/backward_lstm/lstm_cell_2/bias:0']
 backward_lstm_cell_2_bias_array = np.array(backward_lstm_cell_2_bias)
-np.savetxt('weights/backward_bias.txt', backward_lstm_cell_2_bias_array)
+np.savetxt('weights/' + country_name + '/backward_bias.txt', backward_lstm_cell_2_bias_array)
 
 
 backward_lstm_cell_2_kernel = f['model_weights/bidirectional/bidirectional/backward_lstm/lstm_cell_2/kernel:0']
 backward_lstm_cell_2_kernel_array = np.array(backward_lstm_cell_2_kernel)
-np.savetxt('weights/backward_kernel.txt', backward_lstm_cell_2_kernel_array)
+np.savetxt('weights/' + country_name + '/backward_kernel.txt', backward_lstm_cell_2_kernel_array)
 
 
 backward_lstm_cell_2_recurrent_kernel = f['model_weights/bidirectional/bidirectional/backward_lstm/lstm_cell_2/recurrent_kernel:0']
 backward_lstm_cell_2_recurrent_kernel_array = np.array(backward_lstm_cell_2_recurrent_kernel)
-np.savetxt('weights/backward_recurrent_kernel.txt', backward_lstm_cell_2_recurrent_kernel_array)
+np.savetxt('weights/' + country_name + '/backward_recurrent_kernel.txt', backward_lstm_cell_2_recurrent_kernel_array)
 
 
 
@@ -41,18 +46,18 @@ np.savetxt('weights/backward_recurrent_kernel.txt', backward_lstm_cell_2_recurre
 #Forward LSTM
 forward_lstm_cell_1_bias = f['model_weights/bidirectional/bidirectional/forward_lstm/lstm_cell_1/bias:0']
 forward_lstm_cell_1_bias_array = np.array(forward_lstm_cell_1_bias)
-np.savetxt('weights/forward_bias.txt', forward_lstm_cell_1_bias_array)
+np.savetxt('weights/' + country_name + '/forward_bias.txt', forward_lstm_cell_1_bias_array)
 
 
 forward_lstm_cell_1_kernel = f['model_weights/bidirectional/bidirectional/forward_lstm/lstm_cell_1/kernel:0']
 forward_lstm_cell_1_kernel_array = np.array(forward_lstm_cell_1_kernel)
-np.savetxt('weights/forward_kernel.txt', forward_lstm_cell_1_kernel_array)
+np.savetxt('weights/' + country_name + '/forward_kernel.txt', forward_lstm_cell_1_kernel_array)
 
 
 
 forward_lstm_cell_1_recurrent_kernel = f['model_weights/bidirectional/bidirectional/forward_lstm/lstm_cell_1/recurrent_kernel:0']
 forward_lstm_cell_1_recurrent_kernel_array = np.array(forward_lstm_cell_1_recurrent_kernel)
-np.savetxt('weights/forward_recurrent_kernel.txt', forward_lstm_cell_1_recurrent_kernel_array)
+np.savetxt('weights/' + country_name + '/forward_recurrent_kernel.txt', forward_lstm_cell_1_recurrent_kernel_array)
 
 
 
