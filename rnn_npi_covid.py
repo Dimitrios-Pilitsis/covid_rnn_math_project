@@ -141,9 +141,6 @@ def run_model(dataset, output_size, learning_rate_optimal, epochs):
 	#Compie the model with the entire database (as x_valid will have more recent data which is useful for predictions)
 	history = model.fit(dataset, epochs=epochs)
 
-	#model.save_weights('weights_greece')
-	#model.save('my_model.h5')
-
 	return history, model
 
 
@@ -256,6 +253,9 @@ def main():
 	#dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
 	dataset_full_windowed = windowed_dataset(cases, window_size, batch_size, shuffle_buffer_size, num_of_days_to_predict)
 	history, model = run_model(dataset_full_windowed, output_size, learning_rate_optimal, epochs)
+
+	model_filename = 'weights/model_' + country_name + '.h5' 
+	model.save(model_filename)
 
 
 	#-----------------------------------------------------------------------------------------
