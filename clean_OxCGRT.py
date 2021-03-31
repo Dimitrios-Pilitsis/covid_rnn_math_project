@@ -3,7 +3,6 @@ import pandas as pd
 
 
 df = pd.read_csv('Data/OxCGRT_latest.csv')
-
 df.index.name = "Index"
 
 
@@ -14,6 +13,8 @@ df = df.drop(columns=['RegionName', 'RegionCode', 'E3_Fiscal measures', 'E4_Inte
 df = df[df.Jurisdiction != "STATE_TOTAL"]
 
 df = df.drop(columns=['Jurisdiction'])
+
+df["CountryName"] = df["CountryName"].str.replace(' ', '_')
 
 df.to_csv('Data/OxCGRT_latest_cleaned.csv')
 
