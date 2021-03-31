@@ -1,4 +1,4 @@
-import sys
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -219,9 +219,16 @@ def visualizations(time_valid, x_valid, results, history, epochs, cases_scaler):
 
 
 def main():
-	country_name = sys.argv[1] 
+	parser = argparse.ArgumentParser()
+	parser.add_argument('country_name', nargs="*", type=str)
+	arguments = parser.parse_args()
+	country_name = arguments.country_name
+	country_name = ' '.join(country_name) #Make countryname from list to string
+
+
 	time, cases, cases_scaler = setup_dataset(country_name)	
-	#print(cases)
+
+
 	#------------------------------------------------------------------------
 	#Key variables
 	#Current number of days is 390
@@ -270,7 +277,7 @@ def main():
 	print(mae_valid)
 
 
-	visualizations(time_valid, x_valid, results, history, epochs, cases_scaler)
+	#visualizations(time_valid, x_valid, results, history, epochs, cases_scaler)
 	
 
 

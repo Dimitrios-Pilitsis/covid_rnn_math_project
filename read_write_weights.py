@@ -1,9 +1,17 @@
 import h5py
 import numpy as np
 import sys
+import argparse
 
 
-country_name = sys.argv[1] 
+parser = argparse.ArgumentParser()
+parser.add_argument('country_name', nargs="*", type=str)
+arguments = parser.parse_args()
+country_name = arguments.country_name
+country_name = ' '.join(country_name)
+
+
+
 filename = 'models_h5/' + country_name + '.h5'
 
 
