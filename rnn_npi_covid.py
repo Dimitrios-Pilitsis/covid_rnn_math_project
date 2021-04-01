@@ -20,6 +20,8 @@ def setup_ts(df, country_name):
 	ts_country = ts_country.drop(columns=['CountryName', 'CountryCode'])
 	return ts_country
 
+
+
 #Finds the first non-zero confirmed case
 def first_nonzero_case_index(timeseries):
 	confirmed_cases = timeseries['ConfirmedCases'].to_numpy()
@@ -31,6 +33,7 @@ def first_nonzero_case_index(timeseries):
 	return fnz
 
 
+
 def setup_dataset(country_name):
 	df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 
@@ -40,24 +43,24 @@ def setup_dataset(country_name):
 
 	#Update timeseries so that the first value is the first confirmed case
 	fnz = first_nonzero_case_index(ts_greece)
-	ts_greece = ts_greece[fnz:-1] #Remove last row as it is just filled with NaN
+
+	num_of_days_of_data = 365
+	
+	ts_greece = ts_greece[fnz:fnz+num_of_days_of_data] 
 
 
 	#2D numpy array (doesn't include date column within the array)
-	dataset_full = ts_greece.to_numpy() #Remove last row as it is just filled with NaN
-	#print(dataset)
+	dataset_full = ts_greece.to_numpy() 
 
-	#Rescale the ConfirmedCases & ConfirmedDeaths which are the only features on the real number range
+	#Rescale the ConfirmedCases 
 	#Create 2 different scalers as it makes it easier for later when plotting different graphs
 	cases_scaler = MinMaxScaler()
-	deaths_scaler = MinMaxScaler()
 
 	#Inner reshape is to satisfy sklearn, outer reshape is to keep the shape of array the same as originally
 	dataset_full[:,-2] = cases_scaler.fit_transform(dataset_full[:,-2].reshape(-1,1))[:,0]
-	#dataset_full[:,-1] = deaths_scaler.fit_transform(dataset_full[:,-1].reshape(-1,1))[:,0]
 
 	"""
-	#Might be useful for when I bring in multidimensional data (as I will need to rescale both cases and deaths)
+	#Might be useful if  I bring in multidimensional data (as I will need to rescale both cases and deaths)
 
 	#Original scaler which incoporated both cases and deaths (harder for visualizations)
 	scaler = MinMaxScaler()
@@ -68,7 +71,6 @@ def setup_dataset(country_name):
 
 	time = np.arange(len(dataset_full), dtype="float32") #Time is represented as day x since first covid case
 	cases = dataset_full[:,-2]
-	#deaths = dataset_full[:,-1]
 
 	return time, cases, cases_scaler 
 
@@ -82,8 +84,10 @@ def windowed_dataset(series, window_size, batch_size, shuffle_buffer, num_of_day
   dataset = dataset.batch(batch_size).prefetch(1)
   return dataset
 
-def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size):
-	dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
+#Model functions-----------------------------------------------------------------------------------------
+
+def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size, output_size, num_of_days_to_predict):
+	dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size, num_of_days_to_predict)
 
 	#print(dataset)
 	#for x, y in dataset:
@@ -92,12 +96,9 @@ def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_siz
 	model = tf.keras.models.Sequential([
 		 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
 			      input_shape=[None]),
-		 tf.keras.layers.LSTM(64, return_sequences=True),
-	#    	 tf.keras.layers.LSTM(64, return_sequences=True),
+		 tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
 		 tf.keras.layers.Dense(output_size),
-		#  tf.keras.layers.Lambda(lambda x: x * 100.0)
 	])
-
 
 
 	#-----------------------------------------------------------------------
@@ -110,35 +111,27 @@ def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_siz
 		      metrics=["mae"])
 	history = model.fit(dataset, epochs=100, callbacks=[lr_schedule])
 
-	plt.semilogx(history.history["lr"], history.history["loss"])
-	#plt.axis([2e-8, 1e-4, 0, 30])
-	plt.show()
+	#find minimum of loss
+	optimal_lr = history.history["lr"][np.argmin(history.history["loss"])]
+
+#	plt.semilogx(history.history["lr"], history.history["loss"])
+#	plt.show()
+	return optimal_lr
 	
 
 def run_model(dataset, output_size, learning_rate_optimal, epochs):
-
 	model = tf.keras.models.Sequential([
 		 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
 			      input_shape=[None]),
-		# tf.keras.layers.LSTM(64, return_sequences=True),
-		# tf.keras.layers.LSTM(64, return_sequences=True),
-		# tf.keras.layers.LSTM(64, return_sequences=True),
 		 tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-		# tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-	#    	 tf.keras.layers.LSTM(32, return_sequences=True),
-	#    	 tf.keras.layers.LSTM(32),
 		 tf.keras.layers.Dense(output_size),
 	])
 
 
 	model.summary()
 
-	#model.compile(loss="mse", optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
-
-	#Huber loss function version
 	model.compile(loss=tf.keras.losses.Huber(), optimizer=tf.keras.optimizers.SGD(lr=learning_rate_optimal, momentum=0.9),metrics=["mae"])
 
-	#Compie the model with the entire database (as x_valid will have more recent data which is useful for predictions)
 	history = model.fit(dataset, epochs=epochs)
 
 	return history, model
@@ -154,10 +147,10 @@ def model_forecast(model, series, window_size):
     forecast = model.predict(ds)
     return forecast
 
+#Visualizations functions ----------------------------------------------------------------
 
-
-def visualizations(time_valid, x_valid, results, history, epochs, cases_scaler):
-	#For visualizations, we need to unscale the ConfirmedCases & ConfirmedDeaths
+def basic_visualizations(time_valid, x_valid, results, history, epochs, cases_scaler):
+	#For visualizations, we need to unscale the ConfirmedCases
 	x_valid_unscaled = cases_scaler.inverse_transform(x_valid.reshape(-1, 1))[:,0]
 	results_unscaled = cases_scaler.inverse_transform(results.reshape(-1, 1))[:,0]
 
@@ -215,7 +208,7 @@ def visualizations(time_valid, x_valid, results, history, epochs, cases_scaler):
 	"""
 
 
-
+#Main function ------------------------------------------------------------------------------------------
 
 
 def main():
@@ -223,7 +216,7 @@ def main():
 	parser.add_argument('country_name', nargs="*", type=str)
 	arguments = parser.parse_args()
 	country_name = arguments.country_name
-	country_name = ' '.join(country_name) #Make countryname from list to string
+	country_name = '_'.join(country_name) #Make countryname from list to string separated by underscore
 
 
 	time, cases, cases_scaler = setup_dataset(country_name)	
@@ -240,7 +233,7 @@ def main():
 
 	window_size = 5
 	batch_size = 20
-	shuffle_buffer_size = 390
+	shuffle_buffer_size = len(cases)
 	output_size = 1 
 	num_of_days_to_predict = 1
 	epochs=100
@@ -248,8 +241,7 @@ def main():
 
 	#------------------------------------------------------------------------
 	#Function to determine the optimal learning rate (by inspection)
-	#learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size)
-	learning_rate_optimal = 1e-3
+	learning_rate_optimal = learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size, output_size, num_of_days_to_predict)
 
 	#----------------------------------------------------------------------
 
@@ -273,11 +265,11 @@ def main():
 
 
 	#Quantify the difference in predicted and actual values
-	mae_valid = tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
-	print(mae_valid)
+	#mae_valid = tf.keras.metrics.mean_absolute_error(x_valid, results).numpy()
+	#print(mae_valid)
 
 
-	#visualizations(time_valid, x_valid, results, history, epochs, cases_scaler)
+	#basic_visualizations(time_valid, x_valid, results, history, epochs, cases_scaler)
 	
 
 
