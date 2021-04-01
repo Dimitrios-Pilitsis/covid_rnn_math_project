@@ -1,8 +1,0 @@
-Window size=5, 70:30 split
-	1 layer, 64 units, epochs=1000: 
-		0.10540861 
-		0.1344807
-	
-	1 layer, 32 units, epochs=1000:
-		0.07906272
-		0.26960784
