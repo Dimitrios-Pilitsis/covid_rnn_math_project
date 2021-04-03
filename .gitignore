@@ -1,0 +1,11 @@
+#Main directories
+Data/
+models_h5/
+umap_figs/
+weights/
+
+#Hidden directories
+.venv/*
+
+#Swap files
+*.swp
