@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import tensorflow as tf
-#from tensorflow import keras
 from math import isnan
 from sklearn.preprocessing import MinMaxScaler
 
@@ -59,36 +58,29 @@ def setup_dataset(country_name):
 	#Inner reshape is to satisfy sklearn, outer reshape is to keep the shape of array the same as originally
 	dataset_full[:,-2] = cases_scaler.fit_transform(dataset_full[:,-2].reshape(-1,1))[:,0]
 
-	"""
-	#Might be useful if  I bring in multidimensional data (as I will need to rescale both cases and deaths)
-
-	#Original scaler which incoporated both cases and deaths (harder for visualizations)
-	scaler = MinMaxScaler()
-	dataset[:,-2:] = scaler.fit_transform(dataset[:,-2:])
-	"""
 	#Timeseries is useful for any initial visualizations, dataset is for the TF model
 
 
 	time = np.arange(len(dataset_full), dtype="float32") #Time is represented as day x since first covid case
 	cases = dataset_full[:,-2]
-
 	return time, cases, cases_scaler 
 
 
 
-def windowed_dataset(series, window_size, batch_size, shuffle_buffer, num_of_days_to_predict):
+def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
   dataset = tf.data.Dataset.from_tensor_slices(series)
-  dataset = dataset.window(window_size + num_of_days_to_predict, shift=1, drop_remainder=True)
-  dataset = dataset.flat_map(lambda window: window.batch(window_size + num_of_days_to_predict))
-  dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-num_of_days_to_predict], window[-num_of_days_to_predict:]))
+  dataset = dataset.window(window_size + 1, shift=1, drop_remainder=True)
+  dataset = dataset.flat_map(lambda window: window.batch(window_size + 1))
+  dataset = dataset.shuffle(shuffle_buffer).map(lambda window: (window[:-1], window[-1:]))
   dataset = dataset.batch(batch_size).prefetch(1)
   return dataset
 
+
+
+
 #Model functions-----------------------------------------------------------------------------------------
 
-def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size, output_size, num_of_days_to_predict):
-	dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size, num_of_days_to_predict)
-
+def learning_rate_optimizer(dataset):
 	#print(dataset)
 	#for x, y in dataset:
 	#   print(x, y)
@@ -97,7 +89,7 @@ def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_siz
 		 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
 			      input_shape=[None]),
 		 tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-		 tf.keras.layers.Dense(output_size),
+		 tf.keras.layers.Dense(1),
 	])
 
 
@@ -109,22 +101,22 @@ def learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_siz
 	model.compile(loss=tf.keras.losses.Huber(),
 		      optimizer=optimizer,
 		      metrics=["mae"])
-	history = model.fit(dataset, epochs=100, callbacks=[lr_schedule])
+	history = model.fit(dataset, epochs=150, callbacks=[lr_schedule])
 
 	#find minimum of loss
 	optimal_lr = history.history["lr"][np.argmin(history.history["loss"])]
 
-#	plt.semilogx(history.history["lr"], history.history["loss"])
-#	plt.show()
+	#plt.semilogx(history.history["lr"], history.history["loss"])
+	#plt.show()
 	return optimal_lr
 	
 
-def run_model(dataset, output_size, learning_rate_optimal, epochs):
+def run_model(dataset, learning_rate_optimal, epochs):
 	model = tf.keras.models.Sequential([
 		 tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1),
 			      input_shape=[None]),
 		 tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-		 tf.keras.layers.Dense(output_size),
+		 tf.keras.layers.Dense(1),
 	])
 
 
@@ -146,6 +138,8 @@ def model_forecast(model, series, window_size):
     ds = ds.batch(32).prefetch(1)
     forecast = model.predict(ds)
     return forecast
+
+
 
 #Visualizations functions ----------------------------------------------------------------
 
@@ -232,16 +226,16 @@ def main():
 	x_valid = cases[split_time:]
 
 	window_size = 5
-	batch_size = 20
+	batch_size = len(cases) 
+	#batch_size = len(cases)
 	shuffle_buffer_size = len(cases)
-	output_size = 1 
-	num_of_days_to_predict = 1
-	epochs=100
+	epochs=200
 
 
 	#------------------------------------------------------------------------
 	#Function to determine the optimal learning rate (by inspection)
-	learning_rate_optimal = learning_rate_optimizer(x_train, window_size, batch_size, shuffle_buffer_size, output_size, num_of_days_to_predict)
+	dataset_lr = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
+	learning_rate_optimal = learning_rate_optimizer(dataset_lr)
 
 	#----------------------------------------------------------------------
 
@@ -250,8 +244,8 @@ def main():
 	#---------------------------------------------------------------------------------
 	#NN with optimal Learning Rate
 	#dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
-	dataset_full_windowed = windowed_dataset(cases, window_size, batch_size, shuffle_buffer_size, num_of_days_to_predict)
-	history, model = run_model(dataset_full_windowed, output_size, learning_rate_optimal, epochs)
+	dataset_full_windowed = windowed_dataset(cases, window_size, batch_size, shuffle_buffer_size)
+	history, model = run_model(dataset_full_windowed, learning_rate_optimal, epochs)
 
 	model_filename = 'models_h5/' + country_name + '.h5' 
 	model.save(model_filename)
