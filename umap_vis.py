@@ -98,6 +98,7 @@ def get_main_data():
 	fk_main = []
 	brk_main = []
 	frk_main = []
+
 	for country in countries_main:
 		bb_main.append(np.loadtxt('./weights/' + country + '/backward_bias.txt').reshape((256,1)))
 		bk_main.append(np.loadtxt('./weights/' + country + '/backward_kernel.txt').reshape((256,1)))
@@ -196,28 +197,40 @@ def main_vis(bb_main, bk_main, dk_main, fb_main, fk_main, brk_main, frk_main):
 	vis_main_countries(frk_main, countries_main, colors_main, 'forward_recurrent_kernel')
 
 
-"""
-def jl_vis():
-	backward_bias, backward_kernel, dense_kernel, forward_bias, forward_kernel, backward_recurrent_kernel, forward_recurrent_kernel = get_world_data()
-	bb_main, bk_main, dk_main, fb_main, fk_main, brk_main, frk_main = get_main_data()
-	
+
+
+def jl_vis_world(backward_recurrent_kernel, forward_recurrent_kernel, countries_world, colors_world):
 	brk_l = jl_transform_gaussian(backward_recurrent_kernel)
 	frk_l = jl_transform_gaussian(forward_recurrent_kernel)
-	umap_vis_basic(brk_l, countries_world, colors_world, 'backward_recurrent_kernel')
-	umap_vis_basic(frk_l, continents_world, colors_world, 'forward_recurrent_kernel')
+	umap_vis_basic(brk_l, countries_world, colors_world, 'backward_recurrent_kernel_JLG')
+	umap_vis_basic(frk_l, continents_world, colors_world, 'forward_recurrent_kernel_JLG')
 
 
 	brk_s = jl_transform_sparse(backward_recurrent_kernel)
 	frk_s = jl_transform_sparse(forward_recurrent_kernel)	
-	vis_main_countries(brk_s, countries_main, colors_main, 'backward_recurrent_kernel')
-	vis_main_countries(frk_s, countries_main, colors_main, 'forward_recurrent_kernel')
+	umap_vis_basic(brk_s, countries_world, colors_world, 'backward_recurrent_kernel_JLS')
+	umap_vis_basic(frk_s, continents_world, colors_world, 'forward_recurrent_kernel_JLS')
 
 
 
-	world_vis(bb_l, bk_l, dk_l, fb_l, fk_l, brk_l, frk_l)
-	main_vis(bb_s, bk_s, dk_s, fb_s, fk_s, brk_s, frk_s)
-"""
+def jl_vis_main(brk_main, frk_main, countries_main, colors_main):
+	brk_l = jl_transform_gaussian(brk_main)
+	frk_l = jl_transform_gaussian(frk_main)
+	vis_main_countries(brk_l, countries_main, colors_main, 'backward_recurrent_kernel_JLG')
+	vis_main_countries(frk_l, countries_main, colors_main, 'forward_recurrent_kernel_JLG')
+
+	brk_s = jl_transform_sparse(brk_main)
+	frk_s = jl_transform_sparse(frk_main)	
+	vis_main_countries(brk_s, countries_main, colors_main, 'backward_recurrent_kernel_JLS')
+	vis_main_countries(frk_s, countries_main, colors_main, 'forward_recurrent_kernel_JLS')
+
+
+
+
 
 world_vis(backward_bias, backward_kernel, dense_kernel, forward_bias, forward_kernel, backward_recurrent_kernel, forward_recurrent_kernel)
 main_vis(bb_main, bk_main, dk_main, fb_main, fk_main, brk_main, frk_main)
-#jl_vis()
+
+
+jl_vis_world(backward_recurrent_kernel, forward_recurrent_kernel, countries_world, colors_world)
+jl_vis_main(brk_main, frk_main, countries_main, colors_main)
