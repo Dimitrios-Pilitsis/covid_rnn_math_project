@@ -37,19 +37,19 @@ def setup_dataset(country_name):
 	df = pd.read_csv('Data/OxCGRT_latest_cleaned.csv', index_col='Index')
 
 	#Convert the csv into an appropriate timeseries
-	ts_greece = setup_ts(df, country_name)
+	ts = setup_ts(df, country_name)
 
 
 	#Update timeseries so that the first value is the first confirmed case
-	fnz = first_nonzero_case_index(ts_greece)
+	fnz = first_nonzero_case_index(ts)
 
 	num_of_days_of_data = 365
 	
-	ts_greece = ts_greece[fnz:fnz+num_of_days_of_data] 
+	ts = ts[fnz:fnz+num_of_days_of_data] 
 
 
 	#2D numpy array (doesn't include date column within the array)
-	dataset_full = ts_greece.to_numpy() 
+	dataset_full = ts.to_numpy() 
 
 	#Rescale the ConfirmedCases 
 	#Create 2 different scalers as it makes it easier for later when plotting different graphs
@@ -227,7 +227,6 @@ def main():
 
 	window_size = 5
 	batch_size = len(cases) 
-	#batch_size = len(cases)
 	shuffle_buffer_size = len(cases)
 	epochs=200
 
