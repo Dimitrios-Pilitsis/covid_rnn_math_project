@@ -35,7 +35,7 @@ def setup_dataset(country_name):
 
 def plot_cases(time, cases, first_case, country_name):
 	plt.figure(figsize=(10, 6))
-	plt.plot(time, cases, 'r-')
+	plt.plot(time, cases, 'b-')
 	plt.axvspan(first_case, first_case+365, color='red', alpha=0.5)
 	plt.title("Confirmed COVID-19 cases in " + country_name)
 	plt.xlabel("Time")
