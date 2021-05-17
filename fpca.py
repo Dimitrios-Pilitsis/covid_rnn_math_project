@@ -42,7 +42,9 @@ def plot_all_curves():
 		cases = setup_dataset(country)
 		ax.scatter(time, cases) 
 
-	#plt.savefig('./cases_figs/all_countries_cases')
+	plt.xlabel("Time")
+	plt.ylabel("Confirmed Cases")
+	plt.savefig('./cases_figs/all_countries_cases')
 	plt.show()
 
 
@@ -94,12 +96,11 @@ def main():
 
 	legend_content = [pt.Patch(color=colors_legend[i], label=curves_legend[i]) for i in range(len(curves_legend))]
 	plt.legend(handles=legend_content)
-
+	plt.xlabel("Time")
+	plt.ylabel("Confirmed Cases")
 	#plt.savefig('./cases_figs/fpca_vertical')
 	plt.savefig('./cases_figs/fpca_joint')
 	plt.show()
-
-
 
 
 
