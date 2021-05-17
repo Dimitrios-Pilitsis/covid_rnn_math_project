@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.patches as pt
 import numpy as np
 import pandas as pd
 from math import isnan
@@ -65,7 +66,6 @@ def main():
 	print(time.shape)
 	#save_all_cases(countries)
 	f = np.load('fpca.npy').astype('double').T #Need data in the form (days, countries)
-	print(f.shape)
 	
 	warp_f = time_warping.fdawarp(f, time)
 	warp_f.srsf_align()
@@ -79,19 +79,29 @@ def main():
 
 
 	# Run the FPCA on a 3 components basis 
-	num_components = 10
+	num_components = 3
 	fPCA_analysis.calc_fpca(no=num_components)
 	#fPCA_analysis.plot()
 
-	print(fPCA_analysis.f_pca.shape)
-	
+
+	colors_legend = ['r', 'g', 'b']
+	curves_legend = ["Curve 1", "Curve 2", "Curve 3"] 
+
 	fig, ax = plt.subplots(figsize=(10.0, 5.0))
 	for i in range(num_components):
-		ax.scatter(time, fPCA_analysis.f_pca[:,0,i])
+		ax.scatter(time, fPCA_analysis.f_pca[:,0,i], c=colors_legend[i])
 	
+
+	legend_content = [pt.Patch(color=colors_legend[i], label=curves_legend[i]) for i in range(len(curves_legend))]
+	plt.legend(handles=legend_content)
+
 	#plt.savefig('./cases_figs/fpca_vertical')
 	plt.savefig('./cases_figs/fpca_joint')
 	plt.show()
+
+
+
+
 
 
 main()
