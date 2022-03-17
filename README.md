@@ -8,3 +8,5 @@ The dataset used is the "COVID-19 Data Repository by the Center for Systems Scie
 TensorFlow was used to apply Bidirectional Long Short Term Memory (LSTM) models to the confirmed COVID-19 cases for various countries around the world. 
 
 UMAP plots were created to analyze what information is encapsulated within the weights of the LSTM models, while also applying Functional Principle Component Analysis.
+
+The report that was written to disseminate the findings has been uploaded to this repository as `Math_Project_report.pdf`.
